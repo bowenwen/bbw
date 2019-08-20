@@ -13,6 +13,7 @@
 #'   , survey weight (i.e. PSU population) in column named \code{pop}
 #'   , and strata (i.e. region or rate bins) with whole numbers (1,2,3...) in column named \code{strata}
 #'   Note: set pop all to 1 to disable weight, set strata all to 1 to disable strata
+#' @param statistic A function operating on data in \code{x} (see Example)
 #' @param replicates Number of bootstrap replicates
 #' @return A data frame with:
 #' \describe{
@@ -22,26 +23,26 @@
 #' }
 #' @examples
 #'
-#' # Example function - summarise data by group
-#'
+#' ## stratify by region
 #' villageData$strata <- villageData$region
 #'
-#' my_summarise <- function(df) {
+#' ## define summarise function for each bootstraped sample
+#' my_summarise <- function(df, ...) {
 #'   df %>%
 #'     filter(!is.na(wash4)) %>%
 #'     group_by(mMUAC) %>%
 #'     summarise(mean_wash4 = round(mean(wash4), 0))
 #' }
 #'
+#' ## perform bootstraping
 #' bootP_df <- bootBW_df(
 #'   x = indicatorsHH,
 #'   sw = villageData,
 #'   statistic = my_summarise,
-#'   replicates = 400
+#'   replicates = 1000
 #' )
 #'
-#' # Now you can take bootP_df and analyze it
-#'
+#' ## analyze result of boostrapped samples
 #' bootP_df %>%
 #'   group_by(mMUAC) %>%
 #'   summarise(
@@ -54,7 +55,14 @@
 #'
 #' # Note: dplyr style pipe with this function is not supported by design since there are two dataframe inputs.
 #'
-bootBW_df <- function(x, sw, statistic, replicates = 400) {
+bootBW_df <- function(x, sw, statistic = NULL, replicates = 1000) {
+  #
+  # multiprocessing settings for library(doParallel)
+  #
+  no_cores <- detectCores() - 1
+  cl <- makeCluster(no_cores)
+  registerDoParallel(cl)
+
   #
   # Create data.frame for output
   #
@@ -63,7 +71,9 @@ bootBW_df <- function(x, sw, statistic, replicates = 400) {
   #
   # Resample for all replicates
   #
-  for (i in 1:replicates) {
+  result_df_list <- foreach(i=icount(replicates),
+                            .packages=c('tidyverse')) %dopar% {
+    # for (i in 1:replicates) {
     #
     # Stratification
     #
@@ -78,20 +88,26 @@ bootBW_df <- function(x, sw, statistic, replicates = 400) {
     # Left join sampled psu with data
     #
     x_sampled <- psu_strata_all %>%
-      rowid_to_column(., "psu_boot") %>%
-      select(psu_boot, psu) %>%
+      select(psu) %>%
       left_join(x, by = "psu")
     #
-    # Select data for analysis. The statistic() function should be tidyverse style
+    # Select data for analysis. The statistic() function should be tidyverse style if used
+    # if no statistics input, output raw bootstrapped df, otherwise output summarized statistics
     #
-    xBWS <- x_sampled %>%
-      statistic()
+    if(is.null(statistic)){
+      xBWS <- x_sampled
+    }
+    else{
+      xBWS <- x_sampled %>%
+        statistic()
+    }
     #
     # Get data for analysis
     # memory requirement can be an issue with very large group_by
     #
     xBWS$trial <- i
-    result_df_list[[i]] <- xBWS
+    # result_df_list[[i]] <- xBWS
+    xBWS
   }
   result_df <- bind_rows(result_df_list)
   return(result_df)

@@ -76,7 +76,11 @@
 #' @importFrom graphics axTicks axis barplot
 #' @importFrom car powerTransform
 #' @importFrom car bcPower
-#' @importFrom dplyr filter
+#' @importFrom dplyr filter mutate select filter summarise arrange group_by sample_n
+#' @importFrom magrittr %>%
+#' @importFrom parallel detectCores makeCluster
+#' @importFrom doParallel registerDoParallel
+#' @importFrom foreach %dopar%
 NULL
 
 ## quiets concerns of R CMD check re: the psus and THRESHOLD that appear in bbw

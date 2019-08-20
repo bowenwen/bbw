@@ -4,7 +4,7 @@
 \alias{bootBW_df}
 \title{\code{bootBW_df} : Blocked Weighted Bootstrap using dplyr sample_n() for faster sampling and flexible analysis.}
 \usage{
-bootBW_df(x, sw, statistic, replicates = 400)
+bootBW_df(x, sw, statistic = NULL, replicates = 1000)
 }
 \arguments{
 \item{x}{A data frame with primary sampling unit (PSU) in column named \code{psu}}
@@ -13,6 +13,8 @@ bootBW_df(x, sw, statistic, replicates = 400)
 , survey weight (i.e. PSU population) in column named \code{pop}
 , and strata (i.e. region or rate bins) with whole numbers (1,2,3...) in column named \code{strata}
 Note: set pop all to 1 to disable weight, set strata all to 1 to disable strata}
+
+\item{statistic}{A function operating on data in \code{x} (see Example)}
 
 \item{replicates}{Number of bootstrap replicates}
 }
@@ -33,26 +35,26 @@ used in \code{SMART} surveys) or posterior weighting (e.g. as used in
 }
 \examples{
 
-# Example function - summarise data by group
-
+## stratify by region
 villageData$strata <- villageData$region
 
-my_summarise <- function(df) {
+## define summarise function for each bootstraped sample
+my_summarise <- function(df, ...) {
   df \%>\%
     filter(!is.na(wash4)) \%>\%
     group_by(mMUAC) \%>\%
     summarise(mean_wash4 = round(mean(wash4), 0))
 }
 
+## perform bootstraping
 bootP_df <- bootBW_df(
   x = indicatorsHH,
   sw = villageData,
   statistic = my_summarise,
-  replicates = 400
+  replicates = 1000
 )
 
-# Now you can take bootP_df and analyze it
-
+## analyze result of boostrapped samples
 bootP_df \%>\%
   group_by(mMUAC) \%>\%
   summarise(

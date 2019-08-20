@@ -22,7 +22,12 @@ Description: The blocked weighted bootstrap (BBW) is an estimation technique
     of the blocked weighted bootstrap to estimate indicators from two-stage 
     cluster sampled surveys.
 Imports: car
-Depends: R (>= 3.0.1)
+Depends: R (>= 3.0.1),
+    dplyr (>= 0.7),
+    magrittr,
+    parallel,
+    foreach,
+    doParallel
 Suggests: knitr,
     rmarkdown,
     testthat
