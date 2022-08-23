@@ -64,7 +64,7 @@ bootBW_df <- function(x, sw = NULL, summary = NULL, statistic = NULL, replicates
   # no_cores <- detectCores() - 1
   # cl <- makeCluster(no_cores)
   # registerDoParallel(cl)
-
+  
   #
   # Create data.frame for output
   #
@@ -88,7 +88,7 @@ bootBW_df <- function(x, sw = NULL, summary = NULL, statistic = NULL, replicates
     psu_strata_all <- sw %>%
       group_by(strata) %>%
       group_map(sample_strata) %>%
-      ungroup()
+      bind_rows(.id = "strata_id")
     #
     # Left join sampled psu with data
     #
@@ -114,11 +114,11 @@ bootBW_df <- function(x, sw = NULL, summary = NULL, statistic = NULL, replicates
     result_df_list[[i]] <- xBWS
     psu_strata_all$trial <- i
     sampled_hh_df_list[[i]] <- psu_strata_all
-
+    
     # xBWS
   }
   # TODO: create a class to contain these objects to enable foreach parallel loops: https://stackoverflow.com/questions/19791609/saving-multiple-outputs-of-foreach-dopar-loop
-
+  
   # stopImplicitCluster()
   #
   # generate export, with options with output summary statistics
