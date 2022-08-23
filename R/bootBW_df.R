@@ -9,7 +9,6 @@
 #' \code{RAM} and \code{S3M} surveys).
 #'
 #' @param x A data frame with primary sampling unit (PSU) in column named \code{psu}
-#' @param sw A data frame with primary sampling unit (PSU) in column named \code{psu}
 #'   , survey weight (i.e. PSU population) in column named \code{pop}
 #'   , and strata (i.e. region or rate bins) with whole numbers (1,2,3...) in column named \code{strata}
 #'   Note: set pop all to 1 to disable weight, set strata all to 1 to disable strata
@@ -55,26 +54,32 @@
 #'
 #' # Note: dplyr style pipe with this function is not supported by design since there are two dataframe inputs.
 #'
-bootBW_df <- function(x, sw, statistic = NULL, replicates = 1000) {
+bootBW_df <- function(x, sw = NULL, summary = NULL, statistic = NULL, replicates = 1000) {
+  if(is.null(sw)){
+    sw <- x %>% distinct(psu, pop, strata)
+  }
   #
   # multiprocessing settings for library(doParallel)
   #
-  no_cores <- detectCores() - 1
-  cl <- makeCluster(no_cores)
-  registerDoParallel(cl)
+  # no_cores <- detectCores() - 1
+  # cl <- makeCluster(no_cores)
+  # registerDoParallel(cl)
 
   #
   # Create data.frame for output
   #
   result_df <- data.frame()
   result_df_list <- list()
+  sampled_hh_df <- data.frame()
+  sampled_hh_df_list <- list()
+  output <- list()
+  output_list <- list()
   #
   # Resample for all replicates
   #
-  result_df_list <- foreach(i=icount(replicates),
-                            .packages=c('tidyverse')) %dopar% {
-    # for (i in 1:replicates) {
-    #
+  # output_list <- foreach(i=icount(replicates),
+  #                           .packages=c('tidyverse')) %dopar% {
+  for (i in 1:replicates) {
     # Stratification
     #
     sample_strata <- function(df, ...) {
@@ -91,24 +96,47 @@ bootBW_df <- function(x, sw, statistic = NULL, replicates = 1000) {
       select(psu) %>%
       left_join(x, by = "psu")
     #
-    # Select data for analysis. The statistic() function should be tidyverse style if used
-    # if no statistics input, output raw bootstrapped df, otherwise output summarized statistics
+    # Select data for summary analysis. The summary() function should be tidyverse style if used
+    # if no summary input, output raw bootstrapped df, otherwise output summarized results
     #
-    if(is.null(statistic)){
+    if (is.null(summary)) {
       xBWS <- x_sampled
     }
     else{
       xBWS <- x_sampled %>%
-        statistic()
+        summary()
     }
     #
     # Get data for analysis
     # memory requirement can be an issue with very large group_by
     #
     xBWS$trial <- i
-    # result_df_list[[i]] <- xBWS
-    xBWS
+    result_df_list[[i]] <- xBWS
+    psu_strata_all$trial <- i
+    sampled_hh_df_list[[i]] <- psu_strata_all
+
+    # xBWS
   }
-  result_df <- bind_rows(result_df_list)
-  return(result_df)
+  # TODO: create a class to contain these objects to enable foreach parallel loops: https://stackoverflow.com/questions/19791609/saving-multiple-outputs-of-foreach-dopar-loop
+
+  # stopImplicitCluster()
+  #
+  # generate export, with options with output summary statistics
+  #
+  if (is.null(statistic)) {
+    result_df <- bind_rows(result_df_list)
+  }
+  else{
+    result_df <- bind_rows(result_df_list)
+    result_df <- result_df %>%
+      statistic()
+  }
+  sampled_hh_df <- bind_rows(sampled_hh_df_list)
+  #
+  # return a list of outputs
+  # first one is full trip table of the replicates
+  # second one is the households table of the replicates
+  #
+  output <- list('result_df' = result_df, 'sampled_hh_df' = sampled_hh_df)
+  return(output)
 }

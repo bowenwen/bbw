@@ -4,12 +4,11 @@
 \alias{bootBW_df}
 \title{\code{bootBW_df} : Blocked Weighted Bootstrap using dplyr sample_n() for faster sampling and flexible analysis.}
 \usage{
-bootBW_df(x, sw, statistic = NULL, replicates = 1000)
+bootBW_df(x, sw = NULL, summary = NULL, statistic = NULL,
+  replicates = 1000)
 }
 \arguments{
-\item{x}{A data frame with primary sampling unit (PSU) in column named \code{psu}}
-
-\item{sw}{A data frame with primary sampling unit (PSU) in column named \code{psu}
+\item{x}{A data frame with primary sampling unit (PSU) in column named \code{psu}
 , survey weight (i.e. PSU population) in column named \code{pop}
 , and strata (i.e. region or rate bins) with whole numbers (1,2,3...) in column named \code{strata}
 Note: set pop all to 1 to disable weight, set strata all to 1 to disable strata}
